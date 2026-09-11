@@ -30,11 +30,11 @@ uv run bn audit fixtures/leaky-cache --no-grok \
   --statement "Failed requests must not be cached."
 ```
 
-Watch a running audit (stage list + live log tail):
+Watch audits live — a dashboard of every run under `audits/`, or one run's stage list + log tail:
 
 ```bash
-uv run bn watch
-uv run bn watch audits/deepswe-fastapi-deprecation/audit-pi
+uv run bn watch                                        # multi-run dashboard
+uv run bn watch audits/datacurve__tomlkit-toml-table-converters  # single run
 ```
 
 Unattended LLM stages use **Pi + OpenRouter** (Harbor/Pier still grade):
