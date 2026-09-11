@@ -19,5 +19,8 @@ AUDIT_TIMEOUT_SEC = 60 * 60
 #: pi --thinking level for spec-extract and coverage: subtle coverage
 #: judgments need real reasoning; attack/countertest stay at the pi default.
 SPEC_THINKING = "high"
+#: Independent coverage passes; merge_coverage_samples keeps the
+#: most-suspicious row per requirement across all of them.
+COVERAGE_SAMPLES = 3
 STAGE_MAX_ATTEMPTS = 3  # 1 initial run + 2 retries of operational failures
 STAGE_RETRY_BACKOFF_SEC = (5.0, 15.0)  # sleep before retry attempt 2 and 3
