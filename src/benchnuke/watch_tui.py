@@ -1,15 +1,17 @@
-"""Interactive multi-run audit monitor (Textual)."""
+"""Stage-wise live monitor for an audit work dir."""
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import DataTable, Static
+from rich.console import Console, Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
-from benchnuke.watch import RunSummary, snapshot_runs, snapshot_work
+from benchnuke.watch import RunSummary, WatchSnapshot, snapshot_runs, snapshot_work
 
 _STATUS_STYLE = {
     "ok": "bold green",
@@ -21,7 +23,32 @@ _STATUS_STYLE = {
     "completed": "bold green",
 }
 
-_COLUMNS = ("task", "status", "stage", "stages", "attacks", "findings C/P/R", "age")
+
+def run_watch(work_dir: Path | None = None, *, refresh: float = 0.4) -> None:
+    console = Console()
+    if work_dir is None:
+        _run_dashboard(console, refresh=refresh)
+        return
+    with Live(console=console, refresh_per_second=max(1, int(1 / refresh)), screen=True) as live:
+        while True:
+            snap = snapshot_work(work_dir)
+            live.update(_render(snap, watching=work_dir))
+            if snap.run_status in {"completed", "failed"}:
+                time.sleep(0.8)
+                return
+            time.sleep(refresh)
+
+
+def _run_dashboard(console: Console, *, refresh: float) -> None:
+    base = Path("audits")
+    with Live(console=console, refresh_per_second=max(1, int(1 / refresh)), screen=True) as live:
+        while True:
+            rows = snapshot_runs(base)
+            live.update(_render_dashboard(rows, base))
+            if rows and all(row.run_status in {"completed", "failed"} for row in rows):
+                time.sleep(0.8)
+                return
+            time.sleep(refresh)
 
 
 def _fmt_age(seconds: float) -> str:
@@ -32,139 +59,69 @@ def _fmt_age(seconds: float) -> str:
     return f"{seconds / 3600:.1f}h"
 
 
-def _row_cells(row: RunSummary) -> tuple[str, ...]:
-    return (
-        row.task_id.rsplit("/", 1)[-1],
-        row.run_status,
-        row.current_stage or "—",
-        f"{row.stages_done}/{row.stages_total}",
-        f"{row.attacks_done}/{row.attacks_total}",
-        f"{row.confirmed}/{row.probable}/{row.rejected}",
-        _fmt_age(row.age_seconds),
+def _render_dashboard(rows: list[RunSummary], base: Path) -> Panel:
+    header = Text.assemble(("bn watch", "bold cyan"), "  ", (str(base), "dim"))
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    table.add_column("task", min_width=24)
+    table.add_column("status", min_width=9)
+    table.add_column("stage", min_width=16, style="yellow")
+    table.add_column("stages", justify="right")
+    table.add_column("attacks", justify="right")
+    table.add_column("findings C/P/R", justify="right")
+    table.add_column("age", justify="right", style="dim")
+    if not rows:
+        table.add_row("(waiting for audits/…)", "", "", "", "", "", "")
+    for row in rows:
+        status = Text(row.run_status, style=_STATUS_STYLE.get(row.run_status, ""))
+        task = row.task_id.rsplit("/", 1)[-1]
+        table.add_row(
+            task,
+            status,
+            row.current_stage or "—",
+            f"{row.stages_done}/{row.stages_total}",
+            f"{row.attacks_done}/{row.attacks_total}",
+            f"{row.confirmed}/{row.probable}/{row.rejected}",
+            _fmt_age(row.age_seconds),
+        )
+    footer = Text("bn watch <dir> for single-run detail · ctrl-c to leave", style="dim")
+    return Panel(
+        Group(header, Text(""), table, Text(""), footer),
+        border_style="bright_black",
+        padding=(1, 2),
     )
 
 
-class DashboardScreen(Screen[None]):
-    BINDINGS = [Binding("o", "open_run", "Open run")]
-
-    def __init__(self, base: Path, *, refresh: float) -> None:
-        super().__init__()
-        self.base = base
-        self._refresh_interval = refresh
-        self._row_dirs: list[str] = []
-
-    def compose(self) -> ComposeResult:
-        yield Static(" bn watch", id="title")
-        yield DataTable(cursor_type="row", zebra_stripes=True)
-        yield Static(" ↑/↓ select · enter/o open · q quit ", id="hint")
-
-    def on_mount(self) -> None:
-        table = self.query_one(DataTable)
-        for column in _COLUMNS:
-            table.add_column(column)
-        self.refresh_rows()
-        self.set_interval(self._refresh_interval, self.refresh_rows)
-
-    def refresh_rows(self) -> None:
-        rows = snapshot_runs(self.base)
-        table = self.query_one(DataTable)
-        cursor = table.cursor_row if table.row_count else 0
-        table.clear()
-        self._row_dirs = []
-        if not rows:
-            table.add_row("(waiting for audits/…)", "", "", "", "", "", "")
-            return
-        for row in rows:
-            table.add_row(*_row_cells(row))
-            self._row_dirs.append(str(row.work_dir))
-        if cursor < table.row_count:
-            table.move_cursor(row=cursor)
-
-    def action_open_run(self) -> None:
-        table = self.query_one(DataTable)
-        if 0 <= table.cursor_row < len(self._row_dirs):
-            self.app.push_screen(
-                RunDetailScreen(
-                    Path(self._row_dirs[table.cursor_row]),
-                    refresh=self._refresh_interval,
-                )
-            )
-
-    def on_data_table_row_selected(self, _event: DataTable.RowSelected) -> None:
-        self.action_open_run()
-
-
-class RunDetailScreen(Screen[None]):
-    BINDINGS = [
-        Binding("escape", "back", "Back"),
-        Binding("backspace", "back", "Back"),
-    ]
-
-    def __init__(self, work_dir: Path, *, refresh: float) -> None:
-        super().__init__()
-        self.work_dir = work_dir
-        self._refresh_interval = refresh
-
-    def compose(self) -> ComposeResult:
-        yield Static(id="summary")
-        yield DataTable(id="stages", cursor_type="none", zebra_stripes=True)
-        yield Static(id="log")
-        yield Static(" esc back · q quit ", id="hint")
-
-    def on_mount(self) -> None:
-        stages = self.query_one("#stages", DataTable)
-        stages.add_columns("#", "stage", "status")
-        self.refresh_detail()
-        self.set_interval(self._refresh_interval, self.refresh_detail)
-
-    def refresh_detail(self) -> None:
-        snap = snapshot_work(self.work_dir)
-        summary = self.query_one("#summary", Static)
-        summary.update(
-            f" bn watch · {snap.task_id} · {snap.run_status} · {snap.current_stage or '—'}"
-        )
-        stages = self.query_one("#stages", DataTable)
-        stages.clear()
-        if snap.stages:
-            for index, row in enumerate(snap.stages, start=1):
-                marker = "▸" if row.name == snap.current_stage else " "
-                stages.add_row(str(index), f"{marker} {row.name}", row.status)
-        else:
-            stages.add_row("—", "(no stages yet)", "")
-        log = self.query_one("#log", Static)
-        label = str(snap.log_path) if snap.log_path else "no log"
-        log.update(f"\n log · {label}\n{snap.log_tail}")
-
-    def action_back(self) -> None:
-        self.app.pop_screen()
-
-
-class AuditWatchApp(App[None]):
-    """bn watch: dashboard of all runs; enter drills into one."""
-
-    BINDINGS = [Binding("q", "quit", "Quit")]
-    CSS = """
-    #title { text-style: bold; color: cyan; padding: 0 1; }
-    #hint { color: $text-muted; padding: 0 1; }
-    #summary { text-style: bold; padding: 0 1; }
-    #stages { height: auto; max-height: 60%; }
-    #log { color: $text; padding: 0 1; }
-    DataTable { height: auto; }
-    """
-
-    def __init__(self, work_dir: Path | None, *, base: Path, refresh: float) -> None:
-        super().__init__()
-        self.work_dir = work_dir
-        self.base = base
-        self._refresh_interval = refresh
-
-    def on_mount(self) -> None:
-        self.push_screen(DashboardScreen(self.base, refresh=self._refresh_interval))
-        if self.work_dir is not None:
-            self.push_screen(RunDetailScreen(self.work_dir, refresh=self._refresh_interval))
-
-
-def run_watch(
-    work_dir: Path | None = None, *, refresh: float = 0.4, base: Path = Path("audits")
-) -> None:
-    AuditWatchApp(work_dir, base=base, refresh=refresh).run()
+def _render(snap: WatchSnapshot, watching: Path) -> Panel:
+    header = Text.assemble(
+        ("bn watch", "bold cyan"),
+        "  ",
+        (snap.task_id, "bold"),
+        "  ",
+        (snap.run_status, _STATUS_STYLE.get(snap.run_status, "")),
+        "  ",
+        (snap.current_stage or "—", "yellow"),
+    )
+    stages = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    stages.add_column("#", style="dim", width=3)
+    stages.add_column("stage", min_width=22)
+    stages.add_column("status", min_width=10)
+    if snap.stages:
+        for index, row in enumerate(snap.stages, start=1):
+            style = _STATUS_STYLE.get(row.status, "")
+            marker = "▸" if row.name == snap.current_stage else " "
+            stages.add_row(str(index), f"{marker} {row.name}", Text(row.status, style=style))
+    else:
+        stages.add_row("—", "(no stages yet)", "")
+    log_label = str(snap.log_path) if snap.log_path else "no log"
+    log = Panel(
+        Text(snap.log_tail or "", style="bright_white"),
+        title=f"log · {log_label}",
+        border_style="cyan",
+        padding=(0, 1),
+    )
+    footer = Text(f"{watching}   q not needed — ctrl-c to leave", style="dim")
+    return Panel(
+        Group(header, Text(""), stages, Text(""), log, Text(""), footer),
+        border_style="bright_black",
+        padding=(1, 2),
+    )

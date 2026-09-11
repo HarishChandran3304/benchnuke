@@ -1,11 +1,11 @@
-"""Multi-run dashboard aggregation (snapshot_runs) and the Textual app."""
+"""Multi-run dashboard aggregation (snapshot_runs) and rendering."""
 
 from __future__ import annotations
 
-import asyncio
+import io
 from pathlib import Path
 
-from textual.widgets import DataTable, Static
+from rich.console import Console
 
 from benchnuke.models import (
     AuditDocument,
@@ -18,7 +18,7 @@ from benchnuke.models import (
 )
 from benchnuke.report import save_audit_document
 from benchnuke.watch import snapshot_runs
-from benchnuke.watch_tui import AuditWatchApp, DashboardScreen, RunDetailScreen
+from benchnuke.watch_tui import _render_dashboard
 
 
 def _write_run(base: Path, rel: str, doc: AuditDocument) -> None:
@@ -99,49 +99,20 @@ def test_snapshot_runs_empty_base(tmp_path: Path) -> None:
     assert snapshot_runs(tmp_path / "nope") == []
 
 
-def test_dashboard_enter_drills_down_and_escape_returns(tmp_path: Path) -> None:
+def test_render_dashboard_shows_rows(tmp_path: Path) -> None:
     base = tmp_path / "audits"
     _write_run(
         base,
         "task-a",
-        _doc("bench/task-a", "running", [StageRecord(name="attack-R1", status="running")]),
+        _doc(
+            "bench/task-a",
+            "running",
+            [StageRecord(name="attack-R1", status="running")],
+        ),
     )
-    _write_run(
-        base,
-        "task-b",
-        _doc("bench/task-b", "completed", [StageRecord(name="report", status="ok")]),
-    )
-
-    async def scenario() -> None:
-        app = AuditWatchApp(None, base=base, refresh=999.0)
-        async with app.run_test() as pilot:
-            assert isinstance(app.screen, DashboardScreen)
-            assert app.screen.query_one(DataTable).row_count == 2
-            await pilot.press("enter")
-            await pilot.pause()
-            assert isinstance(app.screen, RunDetailScreen)
-            summary = str(app.screen.query_one("#summary", Static).content)
-            assert "bench/task-a" in summary
-            await pilot.press("escape")
-            await pilot.pause()
-            assert isinstance(app.screen, DashboardScreen)
-
-    asyncio.run(scenario())
-
-
-def test_open_with_work_dir_goes_straight_to_detail(tmp_path: Path) -> None:
-    base = tmp_path / "audits"
-    _write_run(
-        base,
-        "task-a",
-        _doc("bench/task-a", "running", [StageRecord(name="attack-R1", status="running")]),
-    )
-
-    async def scenario() -> None:
-        app = AuditWatchApp(base / "task-a", base=base, refresh=999.0)
-        async with app.run_test() as pilot:
-            assert isinstance(app.screen, RunDetailScreen)
-            await pilot.press("escape")
-            assert isinstance(app.screen, DashboardScreen)
-
-    asyncio.run(scenario())
+    output = io.StringIO()
+    console = Console(file=output, width=100)
+    console.print(_render_dashboard(snapshot_runs(base), base))
+    text = output.getvalue()
+    assert "task-a" in text
+    assert "running" in text
