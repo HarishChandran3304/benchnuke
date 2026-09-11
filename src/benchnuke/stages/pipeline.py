@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
 import time
 from pathlib import Path
 
 from benchnuke.agent.base import HeadlessAgent
 from benchnuke.agent.factory import select_runner
+from benchnuke.errors import TaskIngestError
 from benchnuke.execute.base import VerifierBackend
 from benchnuke.execute.harbor import HarborBackend
 from benchnuke.ingest.harbor import ingest_harbor_task
@@ -32,6 +34,30 @@ from benchnuke.stages.sanity import SanityStage
 from benchnuke.stages.spec import SpecStage
 from benchnuke.work import default_work_dir
 
+#: Entries a benchnuke run directory is expected to contain. --fresh clears the
+#: run directory, but refuses to delete directories that hold anything else.
+_RUN_DIR_MARKERS = (
+    "results",
+    "artifacts",
+    "runs",
+    "prompts",
+    "preflight",
+    "context.md",
+    "requirements.json",
+    "coverage.json",
+)
+
+
+def _clear_work_dir(root: Path) -> None:
+    if not root.is_dir():
+        return
+    has_marker = any((root / marker).exists() for marker in _RUN_DIR_MARKERS)
+    if any(root.iterdir()) and not has_marker:
+        raise TaskIngestError(
+            f"refusing to --fresh clear {root}: not a benchnuke run directory"
+        )
+    shutil.rmtree(root)
+
 
 def run_audit(
     task_path: Path,
@@ -51,6 +77,8 @@ def run_audit(
     if resolved is None and not fresh:
         resolved = find_run_for_task(task.task_id)
     work = WorkLayout(resolved or default_work_dir(task.task_id))
+    if fresh:
+        _clear_work_dir(work.root)
     work.root.mkdir(parents=True, exist_ok=True)
     document = None if fresh else load_audit_document(work.audit_json)
     if document is None or document.task.id != task.task_id:
