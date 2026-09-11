@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,9 +22,30 @@ class WatchSnapshot:
     log_tail: str
 
 
+@dataclass(frozen=True)
+class RunSummary:
+    """One row of the multi-run dashboard."""
+
+    work_dir: Path
+    task_id: str
+    run_status: str
+    current_stage: str | None
+    stages_done: int
+    stages_total: int
+    confirmed: int
+    probable: int
+    rejected: int
+    attacks_done: int
+    attacks_total: int
+    age_seconds: float
+
+
 def snapshot_work(work_dir: Path, *, tail_lines: int = 24) -> WatchSnapshot:
     layout = WorkLayout(work_dir)
-    document = load_audit_document(layout.audit_json)
+    try:
+        document = load_audit_document(layout.audit_json)
+    except Exception:
+        document = None
     if document is None:
         return WatchSnapshot(
             task_id="(no audit.json)",
@@ -94,6 +116,75 @@ def find_latest_work(*, base: Path | None = None) -> Path | None:
         if newest is None or mtime > newest[0]:
             newest = (mtime, work)
     return None if newest is None else newest[1]
+
+
+def snapshot_runs(base: Path = Path("audits")) -> list[RunSummary]:
+    """Summarize every run under base, running first, then by activity."""
+    if not base.is_dir():
+        return []
+    rows: list[tuple[float, RunSummary]] = []
+    for path in base.rglob("audit.json"):
+        rows.append((path.stat().st_mtime, _summarize_run(path)))
+    rows.sort(key=lambda item: (item[1].run_status != "running", -item[0]))
+    return [row for _, row in rows]
+
+
+def _summarize_run(path: Path) -> RunSummary:
+    work_dir = path.parent.parent
+    try:
+        document = load_audit_document(path)
+    except Exception:
+        document = None
+    if document is None:
+        return RunSummary(
+            work_dir=work_dir,
+            task_id="(busy)",
+            run_status="unknown",
+            current_stage=None,
+            stages_done=0,
+            stages_total=0,
+            confirmed=0,
+            probable=0,
+            rejected=0,
+            attacks_done=0,
+            attacks_total=0,
+            age_seconds=_age(path),
+        )
+    stages = document.stages
+    counts = {"confirmed": 0, "probable": 0, "rejected": 0}
+    for finding in document.findings:
+        if finding.status.value in counts:
+            counts[finding.status.value] += 1
+    attacks_done = len(
+        {
+            row.name
+            for row in stages
+            if row.name.startswith("attack-") and row.status in {"ok", "skip"}
+        }
+    )
+    attacks_total = sum(
+        1 for row in document.coverage if row.coverage.value in {"none", "partial"}
+    )
+    return RunSummary(
+        work_dir=work_dir,
+        task_id=document.task.id,
+        run_status=document.run_status,
+        current_stage=document.current_stage,
+        stages_done=sum(1 for row in stages if row.status in {"ok", "skip"}),
+        stages_total=len(stages),
+        confirmed=counts["confirmed"],
+        probable=counts["probable"],
+        rejected=counts["rejected"],
+        attacks_done=attacks_done,
+        attacks_total=attacks_total,
+        age_seconds=_age(path),
+    )
+
+
+def _age(path: Path) -> float:
+    stat = path.stat()
+    start = getattr(stat, "st_birthtime", stat.st_mtime)
+    return max(0.0, time.time() - start)
 
 
 def _tail(path: Path | None, n: int) -> str:
