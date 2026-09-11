@@ -24,5 +24,13 @@ class SpecStage:
             raise SchemaError("spec-extract did not write requirements.json")
         from benchnuke.pipeline import load_requirements
 
-        ctx.document.specification = load_requirements(ctx.work.requirements).requirements
+        feedback = ctx.work.root / "prompts" / f"{self.name}.error.txt"
+        try:
+            requirements = load_requirements(ctx.work.requirements).requirements
+        except SchemaError as exc:
+            feedback.write_text(str(exc), encoding="utf-8")
+            raise
+        if feedback.is_file():
+            feedback.unlink()
+        ctx.document.specification = requirements
         ctx.save()

@@ -55,9 +55,17 @@ class CoverageStage:
             )
             if not ctx.work.coverage.is_file():
                 raise SchemaError("coverage stage did not write coverage.json")
-            samples.append(load_coverage(ctx.work.coverage).coverage)
+            feedback = ctx.work.root / "prompts" / f"{self.name}.error.txt"
+            try:
+                samples.append(load_coverage(ctx.work.coverage).coverage)
+            except SchemaError as exc:
+                feedback.write_text(str(exc), encoding="utf-8")
+                raise
             ctx.work.coverage.unlink()
         merged = merge_coverage_samples(samples)
+        feedback = ctx.work.root / "prompts" / f"{self.name}.error.txt"
+        if feedback.is_file():
+            feedback.unlink()
         ctx.work.coverage.write_text(
             CoverageFile(coverage=merged).model_dump_json(indent=2) + "\n",
             encoding="utf-8",

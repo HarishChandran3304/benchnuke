@@ -22,6 +22,9 @@ Write `requirements.json` in the working directory with this exact shape:
 `kind` must be one of: explicit, entailed, assumed.
 Only include entailed/assumed if you are highly confident; confirmed findings will ignore them.
 
+The file MUST be valid JSON: no trailing commas, and never put unescaped double quotes inside string values — escape them (`\"`) or use 'single quotes' instead.
+
 `category` is free-form (default "functional"). Use `category: "process"` for requirements about the contribution workflow rather than product behavior: git branching/committing/PR hygiene (e.g. "work on a new branch from main and commit everything when you are done"), changelog- or documentation-update chores (e.g. "update the CLI documentation"). Keep `kind: "explicit"` for these when they are verbatim in the instruction — kind records evidence honesty, category records attackability. Process requirements are filtered out of the attack stage, so classifying them correctly saves attack budget.
 
 Do not run `benchnuke audit`. Do not modify tests. Write the JSON file; do not only print it.
+{{error_feedback}}

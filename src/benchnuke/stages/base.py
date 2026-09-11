@@ -133,7 +133,15 @@ def run_llm_stage(
     replacements: dict[str, str] | None = None,
     thinking: str | None = None,
 ) -> None:
-    prompt_text = load_prompt(prompt_name, **(replacements or {}))
+    feedback_path = ctx.work.root / "prompts" / f"{name}.error.txt"
+    error_feedback = ""
+    if feedback_path.is_file():
+        error_feedback = (
+            "\n\nYour previous attempt produced an invalid output file. Fix it:\n"
+            + feedback_path.read_text(encoding="utf-8")
+        )
+    merged = {**(replacements or {}), "error_feedback": error_feedback}
+    prompt_text = load_prompt(prompt_name, **merged)
     prompt_file = ctx.work.root / "prompts" / f"{name}.md"
     prompt_file.parent.mkdir(parents=True, exist_ok=True)
     prompt_file.write_text(prompt_text, encoding="utf-8")
