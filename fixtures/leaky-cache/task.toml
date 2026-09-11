@@ -1,0 +1,21 @@
+schema_version = "1.4"
+
+[task]
+name = "benchnuke/leaky-cache"
+version = "0.1.0"
+description = "Cache wrapper with an incomplete official verifier"
+
+[metadata]
+fixture = true
+known_gap = "Failed requests must not be cached"
+
+[verifier]
+timeout_sec = 60.0
+
+[agent]
+timeout_sec = 120.0
+
+[environment]
+build_timeout_sec = 180.0
+network_mode = "no-network"
+workdir = "/app"
