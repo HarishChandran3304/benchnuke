@@ -21,4 +21,6 @@ Write `coverage.json`:
 `coverage` must be one of: full, partial, indirect, none, unknown.
 This is candidate generation, not a finding. Prefer `none` or `partial` when you cannot point to an assertion.
 
+Harness-level mechanisms can enforce process requirements even when no test assertion does. Check `task.toml`: a `[[verifier.collect]]` hook that grades only `git diff base HEAD` means uncommitted work is never graded at all, and a separate verifier container cannot observe the agent's git workflow (branch names, commit hygiene, PR etiquette). Mark such requirements coverage `indirect` with evidence pointing at the relevant `task.toml` section. They are not attack candidates.
+
 Do not run `benchnuke audit`. Do not modify the official tests. Write the JSON file.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from pydantic import BaseModel, Field, ValidationError
@@ -100,16 +101,46 @@ def run_mechanical_audit(
     return output
 
 
+PROCESS_CATEGORIES = frozenset({"process", "workflow"})
+
+# Legacy fallback for requirements.json files written before categories existed
+# (all "functional"). Match only unambiguous workflow/doc chores; anything
+# unsure stays attackable.
+PROCESS_STATEMENT_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bwork on a new branch\b",
+        r"\bnew branch from (main|master)\b",
+        r"\bcommit (everything|all (changes|work))\b",
+        r"\bupdate (the )?(cli )?documentation\b",
+        r"\bupdate (the )?changelog\b",
+    )
+)
+
+
+def is_process_requirement(requirement: Requirement) -> bool:
+    """True for contribution-workflow chores the verifier boundary cannot grade."""
+    if requirement.category.strip().lower() in PROCESS_CATEGORIES:
+        return True
+    return any(
+        pattern.search(requirement.statement) for pattern in PROCESS_STATEMENT_PATTERNS
+    )
+
+
 def attackable_requirement_ids(
     coverage: CoverageFile,
     requirements: RequirementsFile | None = None,
 ) -> list[str]:
     explicit: set[str] | None = None
+    process: set[str] = set()
     if requirements is not None:
         explicit = {
             item.id
             for item in requirements.requirements
             if item.kind is RequirementKind.EXPLICIT
+        }
+        process = {
+            item.id for item in requirements.requirements if is_process_requirement(item)
         }
     ids: list[str] = []
     for row in coverage.coverage:
@@ -117,8 +148,30 @@ def attackable_requirement_ids(
             continue
         if explicit is not None and row.requirement_id not in explicit:
             continue
+        if row.requirement_id in process:
+            continue
         ids.append(row.requirement_id)
     return ids
+
+
+def skipped_process_requirement_ids(
+    coverage: CoverageFile,
+    requirements: RequirementsFile | None = None,
+) -> list[str]:
+    """Coverage-gapped explicit ids withheld from attack as process chores."""
+    if requirements is None:
+        return []
+    process = {
+        item.id
+        for item in requirements.requirements
+        if item.kind is RequirementKind.EXPLICIT and is_process_requirement(item)
+    }
+    return [
+        row.requirement_id
+        for row in coverage.coverage
+        if row.coverage in {CoverageLevel.NONE, CoverageLevel.PARTIAL}
+        and row.requirement_id in process
+    ]
 
 
 def load_requirements(path: Path) -> RequirementsFile:

@@ -11,7 +11,12 @@ from benchnuke.execute.base import VerifierBackend
 from benchnuke.execute.harbor import HarborBackend
 from benchnuke.ingest.harbor import ingest_harbor_task
 from benchnuke.models import AuditDocument, TaskRef
-from benchnuke.pipeline import attackable_requirement_ids, load_coverage, load_requirements
+from benchnuke.pipeline import (
+    attackable_requirement_ids,
+    load_coverage,
+    load_requirements,
+    skipped_process_requirement_ids,
+)
 from benchnuke.report import load_audit_document, save_audit_document
 from benchnuke.stages.attack import AttackStage
 from benchnuke.stages.base import AuditContext, maybe_run
@@ -80,6 +85,12 @@ def run_audit(
     requirements = load_requirements(work.requirements)
     coverage = load_coverage(work.coverage)
     by_id = {item.id: item for item in requirements.requirements}
+    skipped = skipped_process_requirement_ids(coverage, requirements)
+    if skipped:
+        note = f"skipped process requirements (not attackable): {', '.join(skipped)}"
+        print(note)
+        if note not in document.notes:
+            document.notes.append(note)
     confirmed_path: Path | None = None
     for req_id in attackable_requirement_ids(coverage, requirements):
         requirement = by_id.get(req_id)
