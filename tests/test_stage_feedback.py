@@ -70,6 +70,6 @@ def test_invalid_json_retries_with_error_feedback(
     assert ctx.document.specification[0].id == "R1"
     assert "{{error_feedback}}" not in runner.prompts[0]
     assert "previous attempt produced an invalid output file" in runner.prompts[1]
-    assert "track " in runner.prompts[1]  # the offending content is quoted back
+    assert "json_invalid" in runner.prompts[1]  # the parse error detail is quoted back
     feedback = ctx.work.root / "prompts" / "spec-extract.error.txt"
     assert not feedback.exists()
