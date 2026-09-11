@@ -68,23 +68,6 @@ def schema() -> None:
 
 
 @app.command()
-def watch(
-    work_dir: Path | None = typer.Argument(
-        None,
-        help="Audit work directory for the single-run detail view.",
-    ),
-) -> None:
-    """Live dashboard of all audits/*/ runs (pass a run dir for detail)."""
-    from benchnuke.watch_tui import run_watch
-
-    try:
-        run_watch(work_dir)
-    except FileNotFoundError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
-
-
-@app.command()
 def ingest(task: Path = typer.Argument(..., exists=True, file_okay=False)) -> None:
     """Load a Harbor task directory and print its id."""
     artifact = ingest_harbor_task(task)
