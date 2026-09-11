@@ -9,13 +9,18 @@ from benchnuke.agent.base import AgentResult, StageSpec
 from benchnuke.execute.harbor import HarborBackend
 from benchnuke.grok_audit import run_grok_audit
 from benchnuke.models import (
+    AuditDocument,
+    AuditSummary,
+    CoverageLevel,
+    CoverageRow,
     FindingStatus,
     PassFail,
     ProofCells,
     Requirement,
     RequirementKind,
+    TaskRef,
 )
-from benchnuke.report import load_audit_document, write_audit_output
+from benchnuke.report import load_audit_document, save_audit_document, write_audit_output
 
 _BROKEN_CACHE = '"""Attack that does not implement Cache."""\n\n\ndef cache():\n    return None\n'
 _BENIGN_CACHE = (
@@ -211,3 +216,49 @@ def test_audit_accumulates_rejected_then_confirmed_findings(
     assert "Confirmed verifier gaps: 1" in report
     prove_rows = [row["name"] for row in payload["stages"] if row["name"].startswith("prove-")]
     assert prove_rows == ["prove-R1", "prove-R2"]
+
+
+def test_write_audit_output_refreshes_stale_summary(tmp_path: Path) -> None:
+    out = tmp_path / "audit-output"
+    out.mkdir(parents=True)
+    stale = AuditDocument(
+        task=TaskRef(id="bench/task"),
+        specification=[_requirement("R1"), _requirement("R2")],
+        coverage=[
+            CoverageRow(requirement_id="R1", coverage=CoverageLevel.FULL),
+            CoverageRow(requirement_id="R2", coverage=CoverageLevel.NONE),
+            CoverageRow(requirement_id="R3", coverage=CoverageLevel.PARTIAL),
+        ],
+        summary=AuditSummary(),
+    )
+    save_audit_document(out / "audit.json", stale)
+    write_audit_output(
+        output_dir=out,
+        task_id="bench/task",
+        requirement=_requirement("R2"),
+        cells=ProofCells(official_adversarial=PassFail.FAIL),
+    )
+    document = load_audit_document(out / "audit.json")
+    assert document is not None
+    assert document.summary.requirements_total == 2
+    assert document.summary.coverage_full == 1
+    assert document.summary.coverage_partial == 1
+    assert document.summary.coverage_none == 1
+    assert document.summary.attacks_attempted == 1
+
+
+def test_summary_counters_populated_after_run(
+    leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
+) -> None:
+    work = tmp_path / "work"
+    output = run_grok_audit(
+        leaky_cache,
+        work_dir=work,
+        runner=ScriptedGrok(leaky_cache, {"R3": _BROKEN_CACHE}),
+        backend=harbor_backend,
+    )
+    payload = json.loads((output / "audit.json").read_text(encoding="utf-8"))
+    summary = payload["summary"]
+    assert summary["requirements_total"] == 1
+    assert summary["coverage_none"] == 1
+    assert summary["attacks_attempted"] == 1

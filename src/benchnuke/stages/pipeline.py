@@ -17,7 +17,7 @@ from benchnuke.pipeline import (
     load_requirements,
     skipped_process_requirement_ids,
 )
-from benchnuke.report import load_audit_document, save_audit_document
+from benchnuke.report import load_audit_document, recompute_summary, save_audit_document
 from benchnuke.stages.attack import AttackStage
 from benchnuke.stages.base import AuditContext, maybe_run
 from benchnuke.stages.budget import AUDIT_TIMEOUT_SEC
@@ -85,6 +85,14 @@ def run_audit(
     requirements = load_requirements(work.requirements)
     coverage = load_coverage(work.coverage)
     by_id = {item.id: item for item in requirements.requirements}
+    document.summary = recompute_summary(
+        document.summary,
+        specification=document.specification,
+        coverage=document.coverage,
+        findings=document.findings,
+        attacks_attempted=ctx.work.graded_count(),
+    )
+    ctx.save()
     skipped = skipped_process_requirement_ids(coverage, requirements)
     if skipped:
         note = f"skipped process requirements (not attackable): {', '.join(skipped)}"
@@ -115,6 +123,13 @@ def run_audit(
     if confirmed_path is None:
         log.append(f"report:{maybe_run(EmptyReportStage(), ctx)}")
         confirmed_path = work.audit_output
+    ctx.document.summary = recompute_summary(
+        ctx.document.summary,
+        specification=ctx.document.specification,
+        coverage=ctx.document.coverage,
+        findings=ctx.document.findings,
+        attacks_attempted=max(ctx.work.graded_count(), len(ctx.document.findings)),
+    )
     ctx.document.run_status = "completed"
     ctx.save()
     return confirmed_path

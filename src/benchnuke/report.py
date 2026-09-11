@@ -9,6 +9,8 @@ from benchnuke.classify import classify_finding
 from benchnuke.models import (
     AuditDocument,
     AuditSummary,
+    CoverageLevel,
+    CoverageRow,
     Finding,
     FindingStatus,
     ProofCells,
@@ -106,23 +108,19 @@ def write_audit_output(
     specification = list(existing.specification) if existing else []
     if not any(row.id == requirement.id for row in specification):
         specification.append(requirement)
-    base_summary = existing.summary if existing else AuditSummary(requirements_total=1)
-    summary = base_summary.model_copy(
-        update={
-            "attacks_attempted": max(base_summary.attacks_attempted, len(findings)),
-            "confirmed_findings": sum(
-                1 for row in findings if row.status is FindingStatus.CONFIRMED
-            ),
-            "probable_findings": sum(
-                1 for row in findings if row.status is FindingStatus.PROBABLE
-            ),
-        }
+    coverage_rows = list(existing.coverage) if existing else []
+    base_summary = existing.summary if existing else AuditSummary()
+    summary = recompute_summary(
+        base_summary,
+        specification=specification,
+        coverage=coverage_rows,
+        findings=findings,
     )
     merged_notes = list(dict.fromkeys([*(existing.notes if existing else []), *(notes or [])]))
     document = AuditDocument(
         task=TaskRef(id=task_id, source_format="harbor"),
         specification=specification,
-        coverage=list(existing.coverage) if existing else [],
+        coverage=coverage_rows,
         findings=findings,
         summary=summary,
         notes=merged_notes,
@@ -142,6 +140,43 @@ def write_audit_output(
         encoding="utf-8",
     )
     return output_dir
+
+
+def recompute_summary(
+    base: AuditSummary,
+    *,
+    specification: list[Requirement],
+    coverage: list[CoverageRow],
+    findings: list[Finding],
+    attacks_attempted: int | None = None,
+) -> AuditSummary:
+    """Refresh summary counters from document content.
+
+    attacks_attempted never decreases: it keeps the higher of the maintained
+    count (graded attacks, per GradeStage) and the count derivable here.
+    """
+    attempted = attacks_attempted if attacks_attempted is not None else len(findings)
+    return base.model_copy(
+        update={
+            "requirements_total": len(specification),
+            "coverage_full": sum(
+                1 for row in coverage if row.coverage is CoverageLevel.FULL
+            ),
+            "coverage_partial": sum(
+                1 for row in coverage if row.coverage is CoverageLevel.PARTIAL
+            ),
+            "coverage_none": sum(
+                1 for row in coverage if row.coverage is CoverageLevel.NONE
+            ),
+            "attacks_attempted": max(base.attacks_attempted, attempted),
+            "confirmed_findings": sum(
+                1 for row in findings if row.status is FindingStatus.CONFIRMED
+            ),
+            "probable_findings": sum(
+                1 for row in findings if row.status is FindingStatus.PROBABLE
+            ),
+        }
+    )
 
 
 def write_empty_report(
