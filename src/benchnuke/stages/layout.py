@@ -57,6 +57,17 @@ class WorkLayout:
     def prove_ok(self, req_id: str) -> Path:
         return self.artifact(req_id) / "prove.json"
 
+    def graded_count(self) -> int:
+        """Requirements that received an official grade (official.json present)."""
+        artifacts = self.root / "artifacts"
+        if not artifacts.is_dir():
+            return 0
+        return sum(
+            1
+            for path in artifacts.iterdir()
+            if path.is_dir() and (path / "official.json").is_file()
+        )
+
     def run_dir(self, stage_name: str) -> Path:
         """Canonical run dir for new writes: runs/agent-<stage>."""
         return self.root / "runs" / f"{RUN_DIR_PREFIX}-{stage_name}"

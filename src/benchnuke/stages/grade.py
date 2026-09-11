@@ -27,6 +27,8 @@ class GradeStage:
             json.dumps({"result": result.value}) + "\n",
             encoding="utf-8",
         )
+        ctx.document.summary.attacks_attempted = ctx.work.graded_count()
+        ctx.save()
 
 
 def official_passed(ctx: AuditContext, req_id: str) -> bool:

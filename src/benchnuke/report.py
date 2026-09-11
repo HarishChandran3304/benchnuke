@@ -109,7 +109,7 @@ def write_audit_output(
     base_summary = existing.summary if existing else AuditSummary(requirements_total=1)
     summary = base_summary.model_copy(
         update={
-            "attacks_attempted": len(findings),
+            "attacks_attempted": max(base_summary.attacks_attempted, len(findings)),
             "confirmed_findings": sum(
                 1 for row in findings if row.status is FindingStatus.CONFIRMED
             ),
