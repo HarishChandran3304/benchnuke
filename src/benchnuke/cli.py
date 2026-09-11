@@ -18,7 +18,7 @@ from benchnuke.models import (
     RequirementKind,
 )
 from benchnuke.pipeline import run_mechanical_audit
-from benchnuke.stage0 import check_task
+from benchnuke.preflight import check_task
 from benchnuke.stages.budget import AUDIT_TIMEOUT_SEC
 from benchnuke.work import default_work_dir
 
@@ -71,7 +71,7 @@ def schema() -> None:
 def watch(
     work_dir: Path | None = typer.Argument(
         None,
-        help="Audit work directory. Defaults to newest work/*/audit.json.",
+        help="Audit work directory. Defaults to newest audits/*/audit.json.",
     ),
 ) -> None:
     """Stage-wise TUI for a running or finished audit."""
@@ -105,13 +105,13 @@ def context_cmd(
 
 @app.command()
 def check(task: Path = typer.Argument(..., exists=True, file_okay=False)) -> None:
-    """Stage 0: Harbor nop fails; Harbor oracle on gold passes."""
+    """Preflight: Harbor nop fails; Harbor oracle on gold passes."""
     artifact = ingest_harbor_task(task)
     work = default_work_dir(artifact.task_id)
     empty = work / "empty"
     empty.mkdir(parents=True, exist_ok=True)
-    check_task(artifact, HarborBackend(), empty, log_dir=work / "stage0")
-    typer.echo(f"stage0 ok: {artifact.task_id}")
+    check_task(artifact, HarborBackend(), empty, log_dir=work / "preflight")
+    typer.echo(f"preflight ok: {artifact.task_id}")
 
 
 @app.command()

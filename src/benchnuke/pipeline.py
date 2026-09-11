@@ -20,8 +20,8 @@ from benchnuke.models import (
     Requirement,
     RequirementKind,
 )
+from benchnuke.preflight import check_task
 from benchnuke.report import write_audit_output
-from benchnuke.stage0 import check_task
 from benchnuke.work import default_work_dir
 
 
@@ -78,7 +78,7 @@ def run_mechanical_audit(
     )
     classification = classify_finding(requirement=requirement, cells=cells)
     output = write_audit_output(
-        output_dir=work / "audit-output",
+        output_dir=work / "results",
         task_id=task.task_id,
         requirement=requirement,
         cells=cells,

@@ -1,4 +1,4 @@
-"""Stage 0: nop must fail, reference solution must pass."""
+"""Preflight: nop must fail, reference solution must pass."""
 
 from __future__ import annotations
 

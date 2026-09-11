@@ -30,16 +30,16 @@ class WorkLayout:
         return self.root / "empty"
 
     @property
-    def stage0(self) -> Path:
-        return self.root / "stage0"
+    def preflight(self) -> Path:
+        return self.root / "preflight"
 
     @property
-    def stage0_ok(self) -> Path:
-        return self.stage0 / "ok"
+    def preflight_ok(self) -> Path:
+        return self.preflight / "ok"
 
     @property
     def audit_output(self) -> Path:
-        return self.root / "audit-output"
+        return self.root / "results"
 
     @property
     def audit_json(self) -> Path:
@@ -92,7 +92,7 @@ class WorkLayout:
 
 def find_run_for_task(task_id: str, *, base: Path | None = None) -> Path | None:
     """Newest work dir whose audit.json names this task id."""
-    root = base or Path("work")
+    root = base or Path("audits")
     if not root.is_dir():
         return None
     matches: list[tuple[float, Path]] = []

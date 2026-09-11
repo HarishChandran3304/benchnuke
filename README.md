@@ -34,7 +34,7 @@ Watch a running audit (stage list + live log tail):
 
 ```bash
 uv run bn watch
-uv run bn watch work/deepswe-fastapi-deprecation/audit-pi
+uv run bn watch audits/deepswe-fastapi-deprecation/audit-pi
 ```
 
 Unattended LLM stages use **Pi + OpenRouter** (Harbor/Pier still grade):

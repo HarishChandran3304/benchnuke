@@ -208,7 +208,7 @@ def test_run_audit_skips_process_requirements(
     harbor_backend: HarborBackend,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     runner = ScriptedRunner()
     run_audit(leaky_cache, work_dir=work, runner=runner, backend=harbor_backend)
     assert "attack-R3" in runner.stages
@@ -216,6 +216,6 @@ def test_run_audit_skips_process_requirements(
     assert "attack-R2" not in runner.stages
     out = capsys.readouterr().out
     assert "R1" in out and "R2" in out
-    payload = json.loads((work / "audit-output" / "audit.json").read_text(encoding="utf-8"))
+    payload = json.loads((work / "results" / "audit.json").read_text(encoding="utf-8"))
     notes = " ".join(payload["notes"])
     assert "R1" in notes and "R2" in notes and "process" in notes

@@ -19,11 +19,13 @@ from benchnuke.models import PassFail
 _IGNORE_NAMES = {
     "attacks",
     "work",
+    "audits",
     "jobs",
     ".git",
     "__pycache__",
     ".pytest_cache",
     "audit-output",
+    "results",
 }
 
 

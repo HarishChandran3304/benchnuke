@@ -8,6 +8,7 @@ htmlcov/
 dist/
 *.egg-info/
 work/
+audits/
 jobs/
 .DS_Store
 .env

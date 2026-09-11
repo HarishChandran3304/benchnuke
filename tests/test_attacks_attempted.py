@@ -55,7 +55,7 @@ def test_grade_stage_recomputes_count_never_increments(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
     task = ingest_harbor_task(leaky_cache)
-    work = WorkLayout(tmp_path / "work")
+    work = WorkLayout(tmp_path / "run")
     work.root.mkdir(parents=True)
     ctx = AuditContext(
         task=task,
@@ -142,7 +142,7 @@ class ScriptedGrok:
 def test_graded_but_failed_attack_counts_toward_budget(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     attacks = {"R1": _BROKEN_CACHE, "R2": _stashing_cache(leaky_cache)}
     output = run_grok_audit(
         leaky_cache,
@@ -164,7 +164,7 @@ def test_graded_but_failed_attack_counts_toward_budget(
 def test_resume_preserves_attempted_count(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     attacks = {"R1": _BROKEN_CACHE, "R2": _stashing_cache(leaky_cache)}
     grok = ScriptedGrok(leaky_cache, attacks)
     run_grok_audit(leaky_cache, work_dir=work, runner=grok, backend=harbor_backend)
@@ -177,7 +177,7 @@ def test_resume_preserves_attempted_count(
 
 
 def test_write_audit_output_keeps_higher_attempted_count(tmp_path: Path) -> None:
-    out = tmp_path / "audit-output"
+    out = tmp_path / "results"
     save_audit_document(
         out / "audit.json",
         AuditDocument(
@@ -205,7 +205,7 @@ def test_write_audit_output_keeps_higher_attempted_count(tmp_path: Path) -> None
 def test_mechanical_path_counts_one_attempt(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     run_mechanical_audit(
         leaky_cache,
         artifact_dir=leaky_cache / "attacks" / "R3",
@@ -219,6 +219,6 @@ def test_mechanical_path_counts_one_attempt(
         work_dir=work,
         backend=harbor_backend,
     )
-    payload = json.loads((work / "audit-output" / "audit.json").read_text(encoding="utf-8"))
+    payload = json.loads((work / "results" / "audit.json").read_text(encoding="utf-8"))
     assert len(payload["findings"]) == 1
     assert payload["summary"]["attacks_attempted"] == 1

@@ -86,7 +86,7 @@ def test_scripted_grok_audit_confirms_r3(
 ) -> None:
     output = run_grok_audit(
         leaky_cache,
-        work_dir=tmp_path / "work",
+        work_dir=tmp_path / "run",
         runner=ScriptedGrok(leaky_cache),
         backend=harbor_backend,
     )
@@ -99,7 +99,7 @@ def test_scripted_grok_audit_confirms_r3(
 def test_resume_skips_spec_and_coverage(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     work.mkdir()
     (work / "requirements.json").write_text(
         json.dumps(

@@ -19,7 +19,7 @@ def test_snapshot_reads_stages(tmp_path: Path) -> None:
             StageRecord(name="countertest-R29", status="running"),
         ],
     )
-    save_audit_document(work / "audit-output" / "audit.json", doc)
+    save_audit_document(work / "results" / "audit.json", doc)
     snap = snapshot_work(work)
     assert snap.task_id == "bench/task"
     assert snap.run_status == "running"

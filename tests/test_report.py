@@ -40,7 +40,7 @@ def _requirement(req_id: str) -> Requirement:
 
 
 def test_finding_ids_increment_and_prior_findings_survive(tmp_path: Path) -> None:
-    out = tmp_path / "audit-output"
+    out = tmp_path / "results"
     write_audit_output(
         output_dir=out,
         task_id="bench/task",
@@ -79,7 +79,7 @@ def test_finding_ids_increment_and_prior_findings_survive(tmp_path: Path) -> Non
 
 
 def test_reprove_same_requirement_reuses_finding_id(tmp_path: Path) -> None:
-    out = tmp_path / "audit-output"
+    out = tmp_path / "results"
     write_audit_output(
         output_dir=out,
         task_id="bench/task",
@@ -161,7 +161,7 @@ class ScriptedGrok:
 def test_report_stage_emits_no_bypass_report(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     output = run_grok_audit(
         leaky_cache,
         work_dir=work,
@@ -180,7 +180,7 @@ def test_report_stage_emits_no_bypass_report(
 def test_report_stage_skipped_on_resume(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     grok = ScriptedGrok(leaky_cache, {"R3": _BROKEN_CACHE})
     output = run_grok_audit(leaky_cache, work_dir=work, runner=grok, backend=harbor_backend)
     first = (output / "report.md").read_text(encoding="utf-8")
@@ -197,7 +197,7 @@ def test_audit_accumulates_rejected_then_confirmed_findings(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
     stashing = (leaky_cache / "attacks" / "R3" / "cache.py").read_text(encoding="utf-8")
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     output = run_grok_audit(
         leaky_cache,
         work_dir=work,
@@ -219,7 +219,7 @@ def test_audit_accumulates_rejected_then_confirmed_findings(
 
 
 def test_write_audit_output_refreshes_stale_summary(tmp_path: Path) -> None:
-    out = tmp_path / "audit-output"
+    out = tmp_path / "results"
     out.mkdir(parents=True)
     stale = AuditDocument(
         task=TaskRef(id="bench/task"),
@@ -250,7 +250,7 @@ def test_write_audit_output_refreshes_stale_summary(tmp_path: Path) -> None:
 def test_summary_counters_populated_after_run(
     leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
 ) -> None:
-    work = tmp_path / "work"
+    work = tmp_path / "run"
     output = run_grok_audit(
         leaky_cache,
         work_dir=work,

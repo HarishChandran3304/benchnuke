@@ -90,7 +90,7 @@ def test_four_cell_is_confirmed_level_a(
 
 def test_report_writes_baf_and_four_cell_markdown(leaky_cache: Path, tmp_path: Path) -> None:
     out = write_audit_output(
-        output_dir=tmp_path / "audit-output",
+        output_dir=tmp_path / "results",
         task_id="benchnuke/leaky-cache",
         requirement=Requirement(
             id="R3",

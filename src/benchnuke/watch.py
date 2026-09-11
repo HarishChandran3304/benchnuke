@@ -52,13 +52,13 @@ def log_path_for_stage(work_dir: Path, stage_name: str) -> Path | None:
     candidates = [
         layout.run_dir_existing(stage_name) / "stdout.log",
         layout.run_dir_existing(stage_name) / "stderr.log",
-        layout.stage0 / "oracle-gold" / "stdout.log",
-        layout.stage0 / "nop" / "stdout.log",
+        layout.preflight / "oracle-gold" / "stdout.log",
+        layout.preflight / "nop" / "stdout.log",
     ]
     if stage_name.startswith("sanity"):
         candidates = [
-            layout.stage0 / "oracle-gold" / "stdout.log",
-            layout.stage0 / "nop" / "stdout.log",
+            layout.preflight / "oracle-gold" / "stdout.log",
+            layout.preflight / "nop" / "stdout.log",
             *candidates,
         ]
     for path in candidates:
@@ -84,7 +84,7 @@ def log_path_for_stage(work_dir: Path, stage_name: str) -> Path | None:
 
 
 def find_latest_work(*, base: Path | None = None) -> Path | None:
-    root = base or Path("work")
+    root = base or Path("audits")
     if not root.is_dir():
         return None
     newest: tuple[float, Path] | None = None

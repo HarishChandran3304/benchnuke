@@ -39,7 +39,7 @@ def test_mechanical_audit_cli(
             "--statement",
             "Failed requests must not be cached.",
             "--work-dir",
-            str(tmp_path / "work"),
+            str(tmp_path / "run"),
         ],
     )
     assert result.exit_code == 0, result.stdout + result.stderr
@@ -76,7 +76,7 @@ def test_mechanical_requires_requirement_options(
             "--countertest",
             str(leaky_cache / "attacks" / "R3" / "countertest.py"),
             "--work-dir",
-            str(tmp_path / "work"),
+            str(tmp_path / "run"),
         ],
     )
     assert result.exit_code != 0
@@ -101,7 +101,7 @@ def test_mechanical_statement_must_be_in_instruction(
             "--statement",
             "must be thread-safe in a way the prompt never said",
             "--work-dir",
-            str(tmp_path / "work"),
+            str(tmp_path / "run"),
         ],
     )
     assert result.exit_code != 0

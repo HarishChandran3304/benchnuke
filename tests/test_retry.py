@@ -42,7 +42,7 @@ def make_ctx(tmp_path: Path) -> AuditContext:
     task_root = tmp_path / "task"
     (task_root / "tests").mkdir(parents=True)
     (task_root / "instruction.md").write_text("Do the thing.\n", encoding="utf-8")
-    work = WorkLayout(tmp_path / "work")
+    work = WorkLayout(tmp_path / "run")
     work.root.mkdir(parents=True)
     document = AuditDocument(task=TaskRef(id="bench/task"), work_dir=str(work.root))
     return AuditContext(

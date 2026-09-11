@@ -27,7 +27,7 @@ _STATUS_STYLE = {
 def run_watch(work_dir: Path | None = None, *, refresh: float = 0.4) -> None:
     target = work_dir or find_latest_work()
     if target is None:
-        raise FileNotFoundError("no audit.json under ./work; pass a work dir")
+        raise FileNotFoundError("no audit.json under ./audits; pass a work dir")
     console = Console()
     with Live(console=console, refresh_per_second=max(1, int(1 / refresh)), screen=True) as live:
         while True:
