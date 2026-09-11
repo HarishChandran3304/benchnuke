@@ -71,10 +71,10 @@ def schema() -> None:
 def watch(
     work_dir: Path | None = typer.Argument(
         None,
-        help="Audit work directory. Defaults to newest audits/*/audit.json.",
+        help="Audit work directory for the single-run detail view.",
     ),
 ) -> None:
-    """Stage-wise TUI for a running or finished audit."""
+    """Live dashboard of all audits/*/ runs (pass a run dir for detail)."""
     from benchnuke.watch_tui import run_watch
 
     try:

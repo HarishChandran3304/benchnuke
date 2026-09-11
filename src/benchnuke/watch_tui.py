@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from benchnuke.watch import WatchSnapshot, find_latest_work, snapshot_work
+from benchnuke.watch import RunSummary, WatchSnapshot, snapshot_runs, snapshot_work
 
 _STATUS_STYLE = {
     "ok": "bold green",
@@ -25,18 +25,70 @@ _STATUS_STYLE = {
 
 
 def run_watch(work_dir: Path | None = None, *, refresh: float = 0.4) -> None:
-    target = work_dir or find_latest_work()
-    if target is None:
-        raise FileNotFoundError("no audit.json under ./audits; pass a work dir")
     console = Console()
+    if work_dir is None:
+        _run_dashboard(console, refresh=refresh)
+        return
     with Live(console=console, refresh_per_second=max(1, int(1 / refresh)), screen=True) as live:
         while True:
-            snap = snapshot_work(target)
-            live.update(_render(snap, watching=target))
+            snap = snapshot_work(work_dir)
+            live.update(_render(snap, watching=work_dir))
             if snap.run_status in {"completed", "failed"}:
                 time.sleep(0.8)
                 return
             time.sleep(refresh)
+
+
+def _run_dashboard(console: Console, *, refresh: float) -> None:
+    base = Path("audits")
+    with Live(console=console, refresh_per_second=max(1, int(1 / refresh)), screen=True) as live:
+        while True:
+            rows = snapshot_runs(base)
+            live.update(_render_dashboard(rows, base))
+            if rows and all(row.run_status in {"completed", "failed"} for row in rows):
+                time.sleep(0.8)
+                return
+            time.sleep(refresh)
+
+
+def _fmt_age(seconds: float) -> str:
+    if seconds < 90:
+        return f"{seconds:.0f}s"
+    if seconds < 90 * 60:
+        return f"{seconds / 60:.0f}m"
+    return f"{seconds / 3600:.1f}h"
+
+
+def _render_dashboard(rows: list[RunSummary], base: Path) -> Panel:
+    header = Text.assemble(("bn watch", "bold cyan"), "  ", (str(base), "dim"))
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    table.add_column("task", min_width=24)
+    table.add_column("status", min_width=9)
+    table.add_column("stage", min_width=16, style="yellow")
+    table.add_column("stages", justify="right")
+    table.add_column("attacks", justify="right")
+    table.add_column("findings C/P/R", justify="right")
+    table.add_column("age", justify="right", style="dim")
+    if not rows:
+        table.add_row("(waiting for audits/…)", "", "", "", "", "", "")
+    for row in rows:
+        status = Text(row.run_status, style=_STATUS_STYLE.get(row.run_status, ""))
+        task = row.task_id.rsplit("/", 1)[-1]
+        table.add_row(
+            task,
+            status,
+            row.current_stage or "—",
+            f"{row.stages_done}/{row.stages_total}",
+            f"{row.attacks_done}/{row.attacks_total}",
+            f"{row.confirmed}/{row.probable}/{row.rejected}",
+            _fmt_age(row.age_seconds),
+        )
+    footer = Text("bn watch <dir> for single-run detail · ctrl-c to leave", style="dim")
+    return Panel(
+        Group(header, Text(""), table, Text(""), footer),
+        border_style="bright_black",
+        padding=(1, 2),
+    )
 
 
 def _render(snap: WatchSnapshot, watching: Path) -> Panel:
