@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchnuke.grok import GrokRunner, StageSpec
+from benchnuke.agent.base import StageSpec
+from benchnuke.grok import GrokRunner
 
 
 def test_build_argv_includes_headless_flags(tmp_path: Path) -> None:

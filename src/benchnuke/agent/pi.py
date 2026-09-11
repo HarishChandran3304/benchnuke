@@ -8,8 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from benchnuke.agent.base import AgentResult, StageSpec
 from benchnuke.errors import AgentRunnerError
-from benchnuke.grok import GrokResult, StageSpec
 
 _TOOL_MAP = {
     "read_file": "read",
@@ -101,7 +101,7 @@ class PiRunner:
         argv.extend(["--", f"@{prompt}"])
         return argv
 
-    def run(self, spec: StageSpec, log_dir: Path) -> GrokResult:
+    def run(self, spec: StageSpec, log_dir: Path) -> AgentResult:
         log_dir.mkdir(parents=True, exist_ok=True)
         cwd = spec.cwd.resolve()
         cwd.mkdir(parents=True, exist_ok=True)
@@ -152,7 +152,7 @@ class PiRunner:
                 f"pi -p failed for stage {spec.name} (exit {returncode}). "
                 f"See {stderr_path}"
             )
-        return GrokResult(
+        return AgentResult(
             returncode=returncode,
             stdout=stdout_text,
             stderr=stderr_text,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchnuke.grok import GrokResult, StageSpec
+from benchnuke.agent.base import AgentResult, StageSpec
 from benchnuke.ingest.harbor import AuditTask
 from benchnuke.models import AuditDocument, Requirement, RequirementKind, TaskRef
 from benchnuke.stages.base import AuditContext, run_llm_stage
@@ -14,10 +14,10 @@ class RecordingRunner:
     def __init__(self) -> None:
         self.log_dirs: list[Path] = []
 
-    def run(self, spec: StageSpec, log_dir: Path) -> GrokResult:
+    def run(self, spec: StageSpec, log_dir: Path) -> AgentResult:
         self.log_dirs.append(log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
-        return GrokResult(returncode=0, stdout="{}", stderr="", session_id=None)
+        return AgentResult(returncode=0, stdout="{}", stderr="", session_id=None)
 
 
 def _ctx(work_root: Path, runner: RecordingRunner) -> AuditContext:

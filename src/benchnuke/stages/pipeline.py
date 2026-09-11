@@ -5,10 +5,10 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+from benchnuke.agent.base import HeadlessAgent
 from benchnuke.agent.factory import select_runner
 from benchnuke.execute.base import VerifierBackend
 from benchnuke.execute.harbor import HarborBackend
-from benchnuke.grok import HeadlessAgent
 from benchnuke.ingest.harbor import ingest_harbor_task
 from benchnuke.models import AuditDocument, TaskRef
 from benchnuke.pipeline import attackable_requirement_ids, load_coverage, load_requirements

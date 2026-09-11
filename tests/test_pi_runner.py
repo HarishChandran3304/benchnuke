@@ -3,10 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import benchnuke.agent.pi as pi_module
+from benchnuke.agent.base import StageSpec
 from benchnuke.agent.factory import select_runner
 from benchnuke.agent.pi import PiRunner, map_tools
 from benchnuke.errors import AgentRunnerError
-from benchnuke.grok import GrokRunner, StageSpec
+from benchnuke.grok import GrokRunner
 
 
 def test_map_tools_grok_names_to_pi() -> None:

@@ -1,40 +1,14 @@
-"""Invoke Grok CLI headless (`grok -p`) as the stage agent runtime."""
+"""Grok harness adapter: run stages via headless `grok -p`."""
 
 from __future__ import annotations
 
 import os
 import shutil
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
 
+from benchnuke.agent.base import AgentResult, StageSpec
 from benchnuke.errors import GrokRunnerError
-
-DEFAULT_STAGE_TIMEOUT_SEC = 60 * 60
-
-
-@dataclass(frozen=True)
-class StageSpec:
-    name: str
-    prompt_file: Path
-    cwd: Path
-    max_turns: int
-    tools: tuple[str, ...]
-    rules: str
-    timeout_sec: int = DEFAULT_STAGE_TIMEOUT_SEC
-
-
-@dataclass(frozen=True)
-class GrokResult:
-    returncode: int
-    stdout: str
-    stderr: str
-    session_id: str | None
-
-
-class HeadlessAgent(Protocol):
-    def run(self, spec: StageSpec, log_dir: Path) -> GrokResult: ...
 
 
 class GrokRunner:
@@ -70,7 +44,7 @@ class GrokRunner:
             argv.extend(["--tools", ",".join(spec.tools)])
         return argv
 
-    def run(self, spec: StageSpec, log_dir: Path) -> GrokResult:
+    def run(self, spec: StageSpec, log_dir: Path) -> AgentResult:
         log_dir.mkdir(parents=True, exist_ok=True)
         resolved = self.binary if Path(self.binary).is_file() else shutil.which(self.binary)
         if resolved is None:
@@ -102,7 +76,7 @@ class GrokRunner:
                 f"See {log_dir / 'stderr.log'}"
             )
         session_id = _session_id(completed.stdout)
-        return GrokResult(
+        return AgentResult(
             returncode=completed.returncode,
             stdout=completed.stdout,
             stderr=completed.stderr,

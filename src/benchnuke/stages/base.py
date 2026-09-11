@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from benchnuke.agent.base import HeadlessAgent, StageSpec
 from benchnuke.errors import AgentRunnerError, is_retryable
 from benchnuke.execute.base import VerifierBackend
-from benchnuke.grok import HeadlessAgent, StageSpec
 from benchnuke.ingest.harbor import AuditTask
 from benchnuke.models import AuditDocument
 from benchnuke.prompts import load_prompt

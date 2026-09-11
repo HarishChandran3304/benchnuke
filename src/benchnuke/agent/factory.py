@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 
+from benchnuke.agent.base import HeadlessAgent
 from benchnuke.agent.pi import PiRunner
 from benchnuke.errors import AgentRunnerError
-from benchnuke.grok import GrokRunner, HeadlessAgent
+from benchnuke.grok import GrokRunner
 
 
 def select_runner(

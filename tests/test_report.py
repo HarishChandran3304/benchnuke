@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from benchnuke.agent.base import AgentResult, StageSpec
 from benchnuke.execute.harbor import HarborBackend
-from benchnuke.grok import GrokResult, StageSpec
 from benchnuke.grok_audit import run_grok_audit
 from benchnuke.models import (
     FindingStatus,
@@ -108,7 +108,7 @@ class ScriptedGrok:
         self.attacks = attacks
         self.stages: list[str] = []
 
-    def run(self, spec: StageSpec, log_dir: Path) -> GrokResult:
+    def run(self, spec: StageSpec, log_dir: Path) -> AgentResult:
         self.stages.append(spec.name)
         log_dir.mkdir(parents=True, exist_ok=True)
         (log_dir / "stdout.json").write_text("{}", encoding="utf-8")
@@ -150,7 +150,7 @@ class ScriptedGrok:
             dest = work / "artifacts" / req_id
             src = self.leaky_cache / "attacks" / "R3" / "countertest.py"
             (dest / "countertest.py").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-        return GrokResult(returncode=0, stdout="{}", stderr="", session_id="test")
+        return AgentResult(returncode=0, stdout="{}", stderr="", session_id="test")
 
 
 def test_report_stage_emits_no_bypass_report(
