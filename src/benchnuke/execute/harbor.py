@@ -306,7 +306,7 @@ _COUNTER_TEST_SH = """#!/usr/bin/env bash
 set -euo pipefail
 mkdir -p /logs/verifier
 cd /app
-if python /tests/countertest.py; then
+if PYTHONPATH=/app python /tests/countertest.py; then
   echo 1 > /logs/verifier/reward.txt
   exit 0
 fi
@@ -325,7 +325,7 @@ if [ -f /logs/verifier/reward.json ]; then
   rm -f /logs/verifier/reward.json
   exit 0
 fi
-if python /tests/countertest.py; then
+if PYTHONPATH=/app python /tests/countertest.py; then
   echo 1 > /logs/verifier/reward.txt
   exit 0
 fi
@@ -341,7 +341,7 @@ git config --global --add safe.directory /app 2>/dev/null || true
 if [ -s /logs/artifacts/model.patch ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git apply --whitespace=nowarn /logs/artifacts/model.patch || exit 0
 fi
-if python /tests/countertest.py; then
+if PYTHONPATH=/app python /tests/countertest.py; then
   echo 1 > /logs/verifier/reward.txt
   exit 0
 fi

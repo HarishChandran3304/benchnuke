@@ -8,7 +8,7 @@ Write `artifacts/{{requirement_id}}/countertest.py` as a **plain Python script**
 
 - `main() -> int` returning 0 on success, 1 on failure
 - `if __name__ == "__main__": raise SystemExit(main())`
-- Import the same module the official tests import
+- Import the same module the official tests import. benchnuke runs the script with `PYTHONPATH=/app`, so the module under test is importable directly — no `sys.path` setup needed.
 
 The script must:
 

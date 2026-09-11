@@ -24,7 +24,7 @@ _SINGLE_CONTAINER_SH = """#!/usr/bin/env bash
 set -euo pipefail
 mkdir -p /logs/verifier
 cd /app
-if python /tests/countertest.py; then
+if PYTHONPATH=/app python /tests/countertest.py; then
   echo 1 > /logs/verifier/reward.txt
   exit 0
 fi
@@ -81,7 +81,7 @@ def test_grader_task_runs_prepare_before_countertest(tmp_path: Path) -> None:
     script = _script(staged)
     assert script.index("grader.py prepare") < script.index("countertest.py")
     assert "if ! python /tests/grader.py prepare; then" in script
-    assert "if python /tests/countertest.py; then" in script
+    assert "if PYTHONPATH=/app python /tests/countertest.py; then" in script
     assert "echo 1 > /logs/verifier/reward.txt" in script
     assert "echo 0 > /logs/verifier/reward.txt" in script
 
@@ -100,7 +100,7 @@ def test_collect_task_without_grader_applies_model_patch(tmp_path: Path) -> None
     assert "grader.py" not in script
     assert "git apply --whitespace=nowarn /logs/artifacts/model.patch" in script
     assert script.index("model.patch") < script.index("countertest.py")
-    assert "if python /tests/countertest.py; then" in script
+    assert "if PYTHONPATH=/app python /tests/countertest.py; then" in script
 
 
 def test_single_container_task_script_is_unchanged(tmp_path: Path) -> None:
