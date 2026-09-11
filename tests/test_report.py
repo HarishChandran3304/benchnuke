@@ -218,6 +218,36 @@ def test_audit_accumulates_rejected_then_confirmed_findings(
     assert prove_rows == ["prove-R1", "prove-R2"]
 
 
+def test_default_stops_at_first_confirmed(
+    leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
+) -> None:
+    stashing = (leaky_cache / "attacks" / "R3" / "cache.py").read_text(encoding="utf-8")
+    grok = ScriptedGrok(leaky_cache, {"R1": stashing, "R2": stashing})
+    output = run_grok_audit(
+        leaky_cache, work_dir=tmp_path / "run", runner=grok, backend=harbor_backend
+    )
+    payload = json.loads((output / "audit.json").read_text(encoding="utf-8"))
+    assert payload["summary"]["confirmed_findings"] == 1
+    assert payload["findings"][0]["requirement_id"] == "R1"
+    assert "attack-R2" not in grok.stages
+
+
+def test_exhaust_attacks_all_candidates(
+    leaky_cache: Path, tmp_path: Path, harbor_backend: HarborBackend
+) -> None:
+    stashing = (leaky_cache / "attacks" / "R3" / "cache.py").read_text(encoding="utf-8")
+    output = run_grok_audit(
+        leaky_cache,
+        work_dir=tmp_path / "run",
+        runner=ScriptedGrok(leaky_cache, {"R1": stashing, "R2": stashing}),
+        backend=harbor_backend,
+        exhaust=True,
+    )
+    payload = json.loads((output / "audit.json").read_text(encoding="utf-8"))
+    assert payload["summary"]["confirmed_findings"] == 2
+    assert [row["requirement_id"] for row in payload["findings"]] == ["R2", "R1"]
+
+
 def test_write_audit_output_refreshes_stale_summary(tmp_path: Path) -> None:
     out = tmp_path / "results"
     out.mkdir(parents=True)

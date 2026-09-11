@@ -187,6 +187,12 @@ def audit(
         "--fresh",
         help="Ignore existing work-dir outputs and rerun every LLM stage.",
     ),
+    exhaust: bool = typer.Option(
+        False,
+        "--exhaust",
+        help="Attack every attackable requirement instead of stopping at the "
+        "first confirmed finding.",
+    ),
     timeout_sec: int = typer.Option(
         AUDIT_TIMEOUT_SEC,
         "--timeout-sec",
@@ -239,6 +245,7 @@ def audit(
         model=model,
         provider=provider,
         fresh=fresh,
+        exhaust=exhaust,
         timeout_sec=timeout_sec,
     )
     typer.echo(str(output / "audit.json"))

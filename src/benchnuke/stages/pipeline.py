@@ -43,6 +43,7 @@ def run_audit(
     model: str | None = None,
     provider: str | None = None,
     fresh: bool = False,
+    exhaust: bool = False,
     timeout_sec: int = AUDIT_TIMEOUT_SEC,
 ) -> Path:
     task = ingest_harbor_task(task_path)
@@ -118,7 +119,8 @@ def run_audit(
         log.append(f"{prove.name}:{maybe_run(prove, ctx)}")
         if prove_confirmed(ctx, req_id):
             confirmed_path = work.audit_output
-            break
+            if not exhaust:
+                break
 
     if confirmed_path is None:
         log.append(f"report:{maybe_run(EmptyReportStage(), ctx)}")
