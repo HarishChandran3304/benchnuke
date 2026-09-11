@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import uuid
 from pathlib import Path
 
@@ -311,6 +312,41 @@ echo 0 > /logs/verifier/reward.txt
 exit 0
 """
 
+_COUNTER_TEST_SH_GRADER = """#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p /logs/verifier
+cd /app
+if ! python /tests/grader.py prepare; then
+  exit 0
+fi
+if [ -f /logs/verifier/reward.json ]; then
+  rm -f /logs/verifier/reward.json
+  exit 0
+fi
+if python /tests/countertest.py; then
+  echo 1 > /logs/verifier/reward.txt
+  exit 0
+fi
+echo 0 > /logs/verifier/reward.txt
+exit 0
+"""
+
+_COUNTER_TEST_SH_MODEL_PATCH = """#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p /logs/verifier
+cd /app
+git config --global --add safe.directory /app 2>/dev/null || true
+if [ -s /logs/artifacts/model.patch ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git apply --whitespace=nowarn /logs/artifacts/model.patch || exit 0
+fi
+if python /tests/countertest.py; then
+  echo 1 > /logs/verifier/reward.txt
+  exit 0
+fi
+echo 0 > /logs/verifier/reward.txt
+exit 0
+"""
+
 
 def materialize_countertest_task(
     task_root: Path,
@@ -318,7 +354,18 @@ def materialize_countertest_task(
     countertest_path: Path,
     dest: Path,
 ) -> Path:
-    """Harbor task whose verifier is the counter-test, solution is the candidate."""
+    """Harbor task whose verifier is the counter-test, solution is the candidate.
+
+    The counter-test must see the candidate's work in /app. DeepSWE-style tasks
+    run the verifier in a separate container whose /app starts pristine at the
+    base commit; the agent's work arrives as /logs/artifacts/model.patch. The
+    generated test.sh restores it before countertest.py runs: via
+    `grader.py prepare` when the task ships a grader (official semantics,
+    test.patch included), else via a plain `git apply` when a collect hook
+    emits model.patch. Single-container tasks keep the plain script. A
+    prepare/apply failure writes no reward, so the grade surfaces as a
+    retryable GradeError instead of a bogus counter-test verdict.
+    """
     staged = materialize_oracle_task(task_root, artifact_dir, dest)
     tests = staged / "tests"
     keep: dict[str, bytes] = {}
@@ -331,11 +378,38 @@ def materialize_countertest_task(
     for name, data in keep.items():
         (tests / name).write_bytes(data)
     shutil.copy2(countertest_path, tests / "countertest.py")
+    if (tests / "grader.py").is_file():
+        script = _COUNTER_TEST_SH_GRADER
+    elif _collects_model_patch(staged):
+        script = _COUNTER_TEST_SH_MODEL_PATCH
+    else:
+        script = _COUNTER_TEST_SH
     test_sh = tests / "test.sh"
-    test_sh.write_text(_COUNTER_TEST_SH, encoding="utf-8")
+    test_sh.write_text(script, encoding="utf-8")
     test_sh.chmod(test_sh.stat().st_mode | 0o111)
     _ensure_dockerfile_copies_countertest(tests / "Dockerfile")
     return staged
+
+
+def _collects_model_patch(task_root: Path) -> bool:
+    """True when a [[verifier.collect]] hook leaves the agent's work as model.patch."""
+    toml_path = task_root / "task.toml"
+    if not toml_path.is_file():
+        return False
+    try:
+        parsed = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError:
+        return False
+    verifier = parsed.get("verifier")
+    if not isinstance(verifier, dict):
+        return False
+    collect = verifier.get("collect")
+    if not isinstance(collect, list):
+        return False
+    return any(
+        isinstance(hook, dict) and "model.patch" in str(hook.get("command", ""))
+        for hook in collect
+    )
 
 
 _DOCKERFILE_COPY_COUNTERTEST = "COPY countertest.py /tests/countertest.py"
