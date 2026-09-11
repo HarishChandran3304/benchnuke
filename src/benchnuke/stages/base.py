@@ -31,6 +31,8 @@ class AuditContext:
     runner: HeadlessAgent
     document: AuditDocument
     fresh: bool = False
+    # Monotonic clock: pauses during system sleep on macOS, so the audit
+    # budget counts awake time and runs survive laptop sleep.
     deadline_monotonic: float = field(
         default_factory=lambda: time.monotonic() + AUDIT_TIMEOUT_SEC
     )
@@ -73,11 +75,11 @@ def maybe_run(stage: Stage, ctx: AuditContext) -> str:
         ctx.save()
         return "skip"
     if ctx.remaining_sec() <= 0:
-        upsert_stage(ctx.document, stage.name, "error", "audit wall clock exceeded")
+        upsert_stage(ctx.document, stage.name, "error", "audit time budget exceeded")
         ctx.document.run_status = "failed"
         ctx.save()
         raise AgentRunnerError(
-            f"audit wall clock exceeded before stage {stage.name}"
+            f"audit time budget exceeded before stage {stage.name}"
         )
     upsert_stage(ctx.document, stage.name, "running")
     ctx.save()

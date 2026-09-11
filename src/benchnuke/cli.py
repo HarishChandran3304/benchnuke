@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import json
 import os
-import signal
-from collections.abc import Callable
 from pathlib import Path
 
 import typer
 
 from benchnuke import __version__
 from benchnuke.context import write_context
-from benchnuke.errors import AgentRunnerError
 from benchnuke.execute.harbor import HarborBackend
 from benchnuke.ingest.harbor import ingest_harbor_task
 from benchnuke.models import (
@@ -24,23 +21,6 @@ from benchnuke.pipeline import run_mechanical_audit
 from benchnuke.stage0 import check_task
 from benchnuke.stages.budget import AUDIT_TIMEOUT_SEC
 from benchnuke.work import default_work_dir
-
-
-def _with_wall_clock(seconds: int, fn: Callable[[], Path]) -> Path:
-    """Kill the whole `bn audit` process after `seconds` (default 1 hour)."""
-    if seconds <= 0:
-        return fn()
-
-    def _handle(_signum: int, _frame: object) -> None:
-        raise AgentRunnerError(f"bn audit exceeded {seconds}s wall clock")
-
-    previous = signal.signal(signal.SIGALRM, _handle)
-    signal.setitimer(signal.ITIMER_REAL, seconds)
-    try:
-        return fn()
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, previous)
 
 app = typer.Typer(help="Audit Harbor tasks for verifier gaps.", no_args_is_help=True)
 
@@ -210,7 +190,11 @@ def audit(
     timeout_sec: int = typer.Option(
         AUDIT_TIMEOUT_SEC,
         "--timeout-sec",
-        help="Wall clock for the whole audit (default 1 hour).",
+        help=(
+            "Awake-time budget for the whole audit (default 1 hour). Enforced "
+            "between stages and as each stage's subprocess timeout; the clock "
+            "pauses during system sleep on macOS, so audits survive laptop sleep."
+        ),
     ),
 ) -> None:
     """Run the full audit. LLM stages use Pi+OpenRouter by default."""
@@ -247,17 +231,14 @@ def audit(
         return
     from benchnuke.grok_audit import run_grok_audit
 
-    def _run() -> Path:
-        return run_grok_audit(
-            task,
-            work_dir=work_dir,
-            backend=HarborBackend(),
-            harness=harness,
-            model=model,
-            provider=provider,
-            fresh=fresh,
-            timeout_sec=timeout_sec,
-        )
-
-    output = _with_wall_clock(timeout_sec, _run)
+    output = run_grok_audit(
+        task,
+        work_dir=work_dir,
+        backend=HarborBackend(),
+        harness=harness,
+        model=model,
+        provider=provider,
+        fresh=fresh,
+        timeout_sec=timeout_sec,
+    )
     typer.echo(str(output / "audit.json"))

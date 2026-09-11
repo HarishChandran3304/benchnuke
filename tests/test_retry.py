@@ -133,3 +133,17 @@ def test_is_retryable_taxonomy() -> None:
     assert not is_retryable(AgentRunnerError("bn audit exceeded 60s wall clock"))
     assert not is_retryable(TaskIngestError("missing instruction.md"))
     assert not is_retryable(ValueError("nope"))
+    assert not is_retryable(AgentRunnerError("audit time budget exceeded before stage x"))
+
+
+def test_maybe_run_refuses_stage_past_deadline(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path)
+    ctx.deadline_monotonic = time.monotonic() - 1
+    stage = ScriptedStage([])
+    with pytest.raises(AgentRunnerError, match="time budget"):
+        maybe_run(stage, ctx)
+    assert stage.attempts == 0
+    record = ctx.document.stages[-1]
+    assert record.status == "error"
+    assert record.error == "audit time budget exceeded"
+    assert ctx.document.run_status == "failed"

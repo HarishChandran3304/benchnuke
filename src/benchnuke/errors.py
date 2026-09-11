@@ -12,8 +12,9 @@ FINDING_GRADE_MARKERS = ("reference_inconsistency", "verifier_infrastructure")
 #: (harbor/pier nonzero exit, missing reward file from a flaky docker run).
 _OPERATIONAL_GRADE_MARKERS = ("harbor run failed", "no Harbor verifier reward")
 
-#: Runner error fragments that retrying cannot fix (missing binary, wall clock).
-_NON_OPERATIONAL_RUNNER_MARKERS = ("binary not found", "wall clock")
+#: Runner error fragments that retrying cannot fix (missing binary, expired
+#: audit time budget — older messages say "wall clock").
+_NON_OPERATIONAL_RUNNER_MARKERS = ("binary not found", "wall clock", "time budget")
 
 
 class BenchnukeError(Exception):

@@ -1,23 +1,12 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
-from benchnuke.cli import _with_wall_clock, app
-from benchnuke.errors import AgentRunnerError
+from benchnuke.cli import app
 
 runner = CliRunner()
-
-
-def test_wall_clock_kills_slow_fn() -> None:
-    def _slow() -> None:
-        time.sleep(2)
-
-    with pytest.raises(AgentRunnerError, match="wall clock"):
-        _with_wall_clock(1, _slow)
 
 
 def test_help() -> None:
