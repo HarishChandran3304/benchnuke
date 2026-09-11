@@ -54,6 +54,25 @@ def test_pi_argv_openrouter(tmp_path: Path, monkeypatch) -> None:
     assert f"@{prompt.resolve()}" in argv
     assert "--cwd" not in argv  # Pi uses process cwd
     assert "--max-turns" not in argv  # Pi has no turn-limit flag
+    assert "--thinking" not in argv  # unset: pi default thinking level
+
+
+def test_pi_argv_thinking_flag(tmp_path: Path) -> None:
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("map coverage", encoding="utf-8")
+    runner = PiRunner(binary="pi", provider="openrouter", model="z-ai/glm-5.3-flash")
+    argv = runner.build_argv(
+        StageSpec(
+            name="coverage",
+            prompt_file=prompt,
+            cwd=tmp_path,
+            max_turns=20,
+            tools=(),
+            rules="Do not invoke benchnuke audit.",
+            thinking="high",
+        )
+    )
+    assert argv[argv.index("--thinking") + 1] == "high"
 
 
 def test_pi_strips_openrouter_prefix() -> None:

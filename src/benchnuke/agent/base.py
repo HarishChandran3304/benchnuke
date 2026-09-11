@@ -18,6 +18,8 @@ class StageSpec:
     tools: tuple[str, ...]
     rules: str
     timeout_sec: int = DEFAULT_STAGE_TIMEOUT_SEC
+    #: pi --thinking level (off|minimal|low|medium|high|xhigh|max); None = pi default
+    thinking: str | None = None
 
 
 @dataclass(frozen=True)

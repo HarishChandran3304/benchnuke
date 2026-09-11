@@ -98,6 +98,8 @@ class PiRunner:
         ]
         if tools:
             argv.extend(["--tools", ",".join(tools)])
+        if spec.thinking:
+            argv.extend(["--thinking", spec.thinking])
         argv.extend(["--", f"@{prompt}"])
         return argv
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from benchnuke.errors import SchemaError
 from benchnuke.stages.base import AuditContext, run_llm_stage
-from benchnuke.stages.budget import SPEC_TOOLS, SPEC_TURNS
+from benchnuke.stages.budget import SPEC_THINKING, SPEC_TOOLS, SPEC_TURNS
 
 
 class SpecStage:
@@ -18,6 +18,7 @@ class SpecStage:
             prompt_name="spec_extract.md",
             tools=SPEC_TOOLS,
             max_turns=SPEC_TURNS,
+            thinking=SPEC_THINKING,
         )
         if not ctx.work.requirements.is_file():
             raise SchemaError("spec-extract did not write requirements.json")

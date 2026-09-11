@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from benchnuke.errors import SchemaError
 from benchnuke.stages.base import AuditContext, run_llm_stage
-from benchnuke.stages.budget import COVERAGE_TURNS, SPEC_TOOLS
+from benchnuke.stages.budget import COVERAGE_TURNS, SPEC_THINKING, SPEC_TOOLS
 
 
 class CoverageStage:
@@ -18,6 +18,7 @@ class CoverageStage:
             prompt_name="coverage.md",
             tools=SPEC_TOOLS,
             max_turns=COVERAGE_TURNS,
+            thinking=SPEC_THINKING,
         )
         if not ctx.work.coverage.is_file():
             raise SchemaError("coverage stage did not write coverage.json")

@@ -131,6 +131,7 @@ def run_llm_stage(
     tools: tuple[str, ...],
     max_turns: int,
     replacements: dict[str, str] | None = None,
+    thinking: str | None = None,
 ) -> None:
     prompt_text = load_prompt(prompt_name, **(replacements or {}))
     prompt_file = ctx.work.root / "prompts" / f"{name}.md"
@@ -146,6 +147,7 @@ def run_llm_stage(
             tools=tools,
             rules=NO_AUDIT,
             timeout_sec=max(1, int(ctx.remaining_sec())),
+            thinking=thinking,
         ),
         log_dir=log_dir,
     )
