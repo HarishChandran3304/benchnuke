@@ -14,3 +14,5 @@ jobs/
 .env
 .env.*
 !.env.example
+audits-round1/
+audits-canary/
