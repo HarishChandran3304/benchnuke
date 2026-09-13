@@ -10,9 +10,7 @@ Judge-agreement on ordinary solutions says nothing about the verifier's behavior
 
 ## How it works
 
-```
-task dir → preflight → spec extract → coverage ×3 → attack → counter-test → four-cell proof → BAF audit.json + proof bundle
-```
+![benchnuke pipeline: preflight → spec extract → coverage → attack → counter-test → four-cell proof](assets/pipeline.png)
 
 - **Preflight** — the empty solution must FAIL and the reference must PASS, or the task itself is broken.
 - **Spec extract** — LLM decomposes `instruction.md` into atomic *explicit* requirements (verbatim evidence only; no invented rules).
